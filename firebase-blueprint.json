@@ -1,0 +1,468 @@
+{
+  "entities": {
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Personal workspace targets and preferences for an authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Display name shown on reports."
+        },
+        "weeklyTargetHours": {
+          "type": "number",
+          "description": "Weekly working hour goal (1 to 168)."
+        },
+        "dailyTargetHours": {
+          "type": "number",
+          "description": "Daily working hour goal (1 to 24)."
+        },
+        "workweekStart": {
+          "type": "string",
+          "enum": ["monday", "sunday"],
+          "description": "First day of the workweek for automated reports."
+        },
+        "defaultHourlyRate": {
+          "type": "number",
+          "description": "Default hourly rate in USD for billable calculations."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "weeklyTargetHours",
+        "dailyTargetHours",
+        "workweekStart",
+        "defaultHourlyRate",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A work project that groups tasks and time entries.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Project title."
+        },
+        "client": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Client or internal department name."
+        },
+        "color": {
+          "type": "string",
+          "maxLength": 7,
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Hex color swatch for charts and indicators."
+        },
+        "hourlyRate": {
+          "type": "number",
+          "description": "Billable hourly rate in USD."
+        },
+        "budgetHours": {
+          "type": "number",
+          "description": "Planned hour budget for the project."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "archived"],
+          "description": "Project lifecycle status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "userId",
+        "name",
+        "client",
+        "color",
+        "hourlyRate",
+        "budgetHours",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A work task associated with a project.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "projectId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Parent project document ID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "description": "Task title."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional task notes."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Task priority level."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["todo", "in_progress", "done"],
+          "description": "Workflow stage."
+        },
+        "estimatedMinutes": {
+          "type": "number",
+          "description": "Estimated effort in minutes."
+        },
+        "dueDate": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^$|^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Optional ISO date string YYYY-MM-DD."
+        },
+        "completedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "ISO timestamp when task was completed, or empty string."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "userId",
+        "projectId",
+        "title",
+        "notes",
+        "priority",
+        "status",
+        "estimatedMinutes",
+        "dueDate",
+        "completedAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TimeEntry": {
+      "title": "TimeEntry",
+      "description": "A recorded working hours session linked to a project and optional task.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "projectId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Parent project document ID."
+        },
+        "taskId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^$|^[a-zA-Z0-9_\\-]+$",
+          "description": "Optional task document ID."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "Summary of work completed during the session."
+        },
+        "workType": {
+          "type": "string",
+          "enum": ["deep_work", "meetings", "planning", "admin"],
+          "description": "Category of work for productivity breakdown."
+        },
+        "billable": {
+          "type": "boolean",
+          "description": "Whether the logged duration is billable."
+        },
+        "dateKey": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Local calendar date key YYYY-MM-DD."
+        },
+        "startTime": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Session start ISO timestamp."
+        },
+        "endTime": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Session end ISO timestamp."
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Duration in seconds (1 to 86400)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "userId",
+        "projectId",
+        "taskId",
+        "description",
+        "workType",
+        "billable",
+        "dateKey",
+        "startTime",
+        "endTime",
+        "durationSeconds",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ActiveTimer": {
+      "title": "ActiveTimer",
+      "description": "Single live timer session per user synchronized across devices.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "projectId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^$|^[a-zA-Z0-9_\\-]+$",
+          "description": "Selected project ID or empty string."
+        },
+        "taskId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^$|^[a-zA-Z0-9_\\-]+$",
+          "description": "Selected task ID or empty string."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "Current session note."
+        },
+        "workType": {
+          "type": "string",
+          "enum": ["deep_work", "meetings", "planning", "admin"],
+          "description": "Category of current work."
+        },
+        "billable": {
+          "type": "boolean",
+          "description": "Billable flag for the session."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["stopwatch", "focus_25", "focus_50"],
+          "description": "Timer mode."
+        },
+        "isPaused": {
+          "type": "boolean",
+          "description": "Whether the live timer is currently paused."
+        },
+        "startedAtMs": {
+          "type": "number",
+          "description": "Epoch milliseconds when current running interval began."
+        },
+        "accumulatedSeconds": {
+          "type": "number",
+          "description": "Seconds accumulated before the current running interval."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "userId",
+        "projectId",
+        "taskId",
+        "description",
+        "workType",
+        "billable",
+        "mode",
+        "isPaused",
+        "startedAtMs",
+        "accumulatedSeconds",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WeeklyReport": {
+      "title": "WeeklyReport",
+      "description": "Immutable finalized snapshot of an automated weekly productivity report.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "weekStart": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Start date of the report week YYYY-MM-DD."
+        },
+        "weekEnd": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "End date of the report week YYYY-MM-DD."
+        },
+        "totalSeconds": {
+          "type": "number",
+          "description": "Total logged seconds during the week."
+        },
+        "deepWorkSeconds": {
+          "type": "number",
+          "description": "Total deep work seconds during the week."
+        },
+        "billableSeconds": {
+          "type": "number",
+          "description": "Total billable seconds during the week."
+        },
+        "billableAmount": {
+          "type": "number",
+          "description": "Total calculated billable value in USD."
+        },
+        "tasksCompleted": {
+          "type": "number",
+          "description": "Number of tasks completed during the week."
+        },
+        "targetHours": {
+          "type": "number",
+          "description": "Weekly working hours target at time of snapshot."
+        },
+        "summaryNote": {
+          "type": "string",
+          "maxLength": 600,
+          "description": "Automated executive summary text."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["finalized"],
+          "description": "Terminal status locking the archived report."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        }
+      },
+      "required": [
+        "userId",
+        "weekStart",
+        "weekEnd",
+        "totalSeconds",
+        "deepWorkSeconds",
+        "billableSeconds",
+        "billableAmount",
+        "tasksCompleted",
+        "targetHours",
+        "summaryNote",
+        "status",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Personal targets and workweek preferences keyed by auth UID."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User-owned work projects."
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Project work tasks owned by the user."
+    },
+    "/timeEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/TimeEntry" },
+      "description": "Logged working hour sessions owned by the user."
+    },
+    "/activeTimers/{userId}": {
+      "schema": { "$ref": "#/entities/ActiveTimer" },
+      "description": "Single live running timer document keyed by auth UID."
+    },
+    "/weeklyReports/{reportId}": {
+      "schema": { "$ref": "#/entities/WeeklyReport" },
+      "description": "Saved immutable snapshots of weekly productivity reports."
+    }
+  }
+}

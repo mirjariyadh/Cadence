@@ -1,0 +1,6 @@
+{
+  "name": "Cadence",
+  "description": "Personal working hours tracker, project task workspace, live focus timer, and automated weekly productivity reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

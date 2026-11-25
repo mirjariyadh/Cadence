@@ -1,0 +1,352 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOptionalId(id) {
+      return id is string && (id == '' || isValidId(id));
+    }
+
+    function isValidDateKey(val) {
+      return val is string && val.size() == 10 && val.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isOptionalDateKey(val) {
+      return val is string && (val == '' || isValidDateKey(val));
+    }
+
+    function isValidHexColor(val) {
+      return val is string && val.size() == 7 && val.matches('^#[0-9A-Fa-f]{6}$');
+    }
+
+    function ownsProject(projectId) {
+      return exists(/databases/$(database)/documents/projects/$(projectId))
+        && get(/databases/$(database)/documents/projects/$(projectId)).data.userId == request.auth.uid;
+    }
+
+    function ownsTask(taskId) {
+      return exists(/databases/$(database)/documents/tasks/$(taskId))
+        && get(/databases/$(database)/documents/tasks/$(taskId)).data.userId == request.auth.uid;
+    }
+
+    // --- Entity Validation Blueprints ---
+    function isValidUserSettings(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'displayName', 'weeklyTargetHours', 'dailyTargetHours',
+          'workweekStart', 'defaultHourlyRate', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'displayName', 'weeklyTargetHours', 'dailyTargetHours',
+          'workweekStart', 'defaultHourlyRate', 'createdAt', 'updatedAt'
+        ])
+        && data.userId == request.auth.uid
+        && data.userId == userId
+        && data.displayName is string && data.displayName.size() <= 80
+        && data.weeklyTargetHours is number && data.weeklyTargetHours >= 1 && data.weeklyTargetHours <= 168
+        && data.dailyTargetHours is number && data.dailyTargetHours >= 1 && data.dailyTargetHours <= 24
+        && data.workweekStart in ['monday', 'sunday']
+        && data.defaultHourlyRate is number && data.defaultHourlyRate >= 0 && data.defaultHourlyRate <= 10000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll([
+          'userId', 'name', 'client', 'color', 'hourlyRate', 'budgetHours',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'name', 'client', 'color', 'hourlyRate', 'budgetHours',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && data.userId == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.client is string && data.client.size() <= 80
+        && isValidHexColor(data.color)
+        && data.hourlyRate is number && data.hourlyRate >= 0 && data.hourlyRate <= 10000
+        && data.budgetHours is number && data.budgetHours >= 0 && data.budgetHours <= 10000
+        && data.status in ['active', 'archived']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll([
+          'userId', 'projectId', 'title', 'notes', 'priority', 'status',
+          'estimatedMinutes', 'dueDate', 'completedAt', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'projectId', 'title', 'notes', 'priority', 'status',
+          'estimatedMinutes', 'dueDate', 'completedAt', 'createdAt', 'updatedAt'
+        ])
+        && data.userId == request.auth.uid
+        && isValidId(data.projectId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.notes is string && data.notes.size() <= 1000
+        && data.priority in ['low', 'medium', 'high']
+        && data.status in ['todo', 'in_progress', 'done']
+        && data.estimatedMinutes is number && data.estimatedMinutes >= 0 && data.estimatedMinutes <= 100000
+        && isOptionalDateKey(data.dueDate)
+        && data.completedAt is string && data.completedAt.size() <= 40
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTimeEntry(data) {
+      return data.keys().hasAll([
+          'userId', 'projectId', 'taskId', 'description', 'workType', 'billable',
+          'dateKey', 'startTime', 'endTime', 'durationSeconds', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'projectId', 'taskId', 'description', 'workType', 'billable',
+          'dateKey', 'startTime', 'endTime', 'durationSeconds', 'createdAt', 'updatedAt'
+        ])
+        && data.userId == request.auth.uid
+        && isValidId(data.projectId)
+        && isOptionalId(data.taskId)
+        && data.description is string && data.description.size() <= 240
+        && data.workType in ['deep_work', 'meetings', 'planning', 'admin']
+        && data.billable is bool
+        && isValidDateKey(data.dateKey)
+        && data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 40
+        && data.endTime is string && data.endTime.size() >= 1 && data.endTime.size() <= 40
+        && data.durationSeconds is number && data.durationSeconds >= 1 && data.durationSeconds <= 86400
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidActiveTimer(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'projectId', 'taskId', 'description', 'workType', 'billable',
+          'mode', 'isPaused', 'startedAtMs', 'accumulatedSeconds', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'projectId', 'taskId', 'description', 'workType', 'billable',
+          'mode', 'isPaused', 'startedAtMs', 'accumulatedSeconds', 'createdAt', 'updatedAt'
+        ])
+        && data.userId == request.auth.uid
+        && data.userId == userId
+        && isOptionalId(data.projectId)
+        && isOptionalId(data.taskId)
+        && data.description is string && data.description.size() <= 240
+        && data.workType in ['deep_work', 'meetings', 'planning', 'admin']
+        && data.billable is bool
+        && data.mode in ['stopwatch', 'focus_25', 'focus_50']
+        && data.isPaused is bool
+        && data.startedAtMs is number && data.startedAtMs >= 0
+        && data.accumulatedSeconds is number && data.accumulatedSeconds >= 0 && data.accumulatedSeconds <= 86400
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWeeklyReport(data) {
+      return data.keys().hasAll([
+          'userId', 'weekStart', 'weekEnd', 'totalSeconds', 'deepWorkSeconds',
+          'billableSeconds', 'billableAmount', 'tasksCompleted', 'targetHours',
+          'summaryNote', 'status', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'weekStart', 'weekEnd', 'totalSeconds', 'deepWorkSeconds',
+          'billableSeconds', 'billableAmount', 'tasksCompleted', 'targetHours',
+          'summaryNote', 'status', 'createdAt'
+        ])
+        && data.userId == request.auth.uid
+        && isValidDateKey(data.weekStart)
+        && isValidDateKey(data.weekEnd)
+        && data.totalSeconds is number && data.totalSeconds >= 0 && data.totalSeconds <= 604800
+        && data.deepWorkSeconds is number && data.deepWorkSeconds >= 0 && data.deepWorkSeconds <= 604800
+        && data.billableSeconds is number && data.billableSeconds >= 0 && data.billableSeconds <= 604800
+        && data.billableAmount is number && data.billableAmount >= 0 && data.billableAmount <= 10000000
+        && data.tasksCompleted is number && data.tasksCompleted >= 0 && data.tasksCompleted <= 10000
+        && data.targetHours is number && data.targetHours >= 1 && data.targetHours <= 168
+        && data.summaryNote is string && data.summaryNote.size() <= 600
+        && data.status == 'finalized'
+        && data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. User Settings (strictly owner-only, no list)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidUserSettings(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidUserSettings(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'weeklyTargetHours', 'dailyTargetHours',
+          'workweekStart', 'defaultHourlyRate', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+    }
+
+    // 2. Projects
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(projectId)
+        && isValidProject(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(projectId)
+        && existing().userId == request.auth.uid
+        && isValidProject(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Edit project metadata
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'client', 'color', 'hourlyRate', 'budgetHours', 'updatedAt'
+          ]) ||
+          // Action: Archive or restore project
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+      allow delete: if isSignedIn() && isValidId(projectId) && existing().userId == request.auth.uid;
+    }
+
+    // 3. Tasks
+    match /tasks/{taskId} {
+      allow get: if isSignedIn() && isValidId(taskId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(taskId)
+        && isValidTask(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && ownsProject(incoming().projectId);
+      allow update: if isSignedIn()
+        && isValidId(taskId)
+        && existing().userId == request.auth.uid
+        && isValidTask(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Update task status and completion timestamp
+          (
+            incoming().projectId == existing().projectId
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'completedAt', 'updatedAt'])
+          ) ||
+          // Action: Edit task details
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'projectId', 'title', 'notes', 'priority', 'status',
+              'estimatedMinutes', 'dueDate', 'completedAt', 'updatedAt'
+            ])
+            && (incoming().projectId == existing().projectId || ownsProject(incoming().projectId))
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(taskId) && existing().userId == request.auth.uid;
+    }
+
+    // 4. Time Entries
+    match /timeEntries/{entryId} {
+      allow get: if isSignedIn() && isValidId(entryId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(entryId)
+        && isValidTimeEntry(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && ownsProject(incoming().projectId)
+        && (incoming().taskId == '' || ownsTask(incoming().taskId));
+      allow update: if isSignedIn()
+        && isValidId(entryId)
+        && existing().userId == request.auth.uid
+        && isValidTimeEntry(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'projectId', 'taskId', 'description', 'workType', 'billable',
+          'dateKey', 'startTime', 'endTime', 'durationSeconds', 'updatedAt'
+        ])
+        && (incoming().projectId == existing().projectId || ownsProject(incoming().projectId))
+        && (incoming().taskId == '' || incoming().taskId == existing().taskId || ownsTask(incoming().taskId));
+      allow delete: if isSignedIn() && isValidId(entryId) && existing().userId == request.auth.uid;
+    }
+
+    // 5. Active Timers (single live timer per user, no list)
+    match /activeTimers/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidActiveTimer(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().projectId == '' || ownsProject(incoming().projectId))
+        && (incoming().taskId == '' || ownsTask(incoming().taskId));
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidActiveTimer(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Pause or resume timer
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'isPaused', 'startedAtMs', 'accumulatedSeconds', 'updatedAt'
+          ]) ||
+          // Action: Update live timer metadata
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'projectId', 'taskId', 'description', 'workType', 'billable', 'mode', 'updatedAt'
+            ])
+            && (incoming().projectId == '' || incoming().projectId == existing().projectId || ownsProject(incoming().projectId))
+            && (incoming().taskId == '' || incoming().taskId == existing().taskId || ownsTask(incoming().taskId))
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+    }
+
+    // 6. Weekly Reports (terminal finalized snapshots: immutable after creation)
+    match /weeklyReports/{reportId} {
+      allow get: if isSignedIn() && isValidId(reportId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(reportId)
+        && isValidWeeklyReport(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(reportId) && existing().userId == request.auth.uid;
+    }
+  }
+}
