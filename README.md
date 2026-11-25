@@ -77,6 +77,15 @@ All collections are isolated per authenticated user (`userId == request.auth.uid
    npx eslint firestore.rules
    ```
 
+## Deploying to GitHub Pages
+
+This repository includes `.github/workflows/deploy.yml` and a relative Vite `base: './'` configuration for automatic GitHub Pages deployment.
+
+1. Push the repository to GitHub (`main` or `master` branch).
+2. In your GitHub repository, go to **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**.
+3. Wait for the **Deploy to GitHub Pages** workflow under the **Actions** tab to finish (or trigger it manually via **Run workflow**).
+4. In the **Firebase Console**, go to **Authentication → Settings → Authorized domains** and add `<your-github-username>.github.io` so Google Sign-In works on your live GitHub Pages URL.
+
 ## Security Note
 
 Ensure `firebase-applet-config.json` is configured for your Firebase project and review `firestore.rules` before deploying or sharing the application broadly.
